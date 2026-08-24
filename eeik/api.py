@@ -177,6 +177,20 @@ def resolve_packs(
     return _packs.resolve_packs(doc, _packs.load_matrix())
 
 
+def pack_conflicts(
+    *, manifest: dict | None = None, content: str | None = None, path: str | Path | None = None
+) -> list[tuple[str, str]]:
+    """Declared pack conflicts among the packs a manifest resolves to.
+
+    Reads each resolved pack's optional ``conflicts:`` (in ``dependencies.yaml``) and
+    returns the conflicting ``(a, b)`` pairs present together (empty when none). Part of
+    the composable-packs model: ``resolve_packs`` transitively pulls in declared
+    ``dependencies`` — this surfaces the inverse, incompatible combinations.
+    """
+    resolved = resolve_packs(manifest=manifest, content=content, path=path)
+    return _packs.detect_conflicts(resolved)
+
+
 def pack_drift(*, lockfile: str | Path | None = None) -> DriftReport:
     """Drift between ``eeik.lock`` and the packs on disk."""
     lock_p = _lock.lock_path(str(lockfile) if lockfile else None)
@@ -309,6 +323,7 @@ __all__ = [
     "providers_of",
     "validate_manifest",
     "resolve_packs",
+    "pack_conflicts",
     "pack_drift",
     "write_lock",
     "verify",

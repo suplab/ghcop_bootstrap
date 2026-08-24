@@ -434,8 +434,16 @@ Risk notes call out dependencies or hazards.
       artifact alone.
 
 ### 8. Longer-term strategic
-- [ ] **Composable packs** — richer dependency resolution + conflict detection between packs. _Effort L ·
-      Impact M · Risk: needs a dependency model beyond today's flat `dependencies:`._
+- [x] **Composable packs — first cut** — the resolver now consumes the per-pack `dependencies.yaml`
+      model that already shipped as content but was previously ignored. `resolve_packs` transitively
+      pulls in a selected pack's declared dependencies (existing-only, cycle-safe — e.g. `agent-harness`
+      → `governance`), in trigger-driven mode only (explicit `capability_packs.explicit` stays exact,
+      and an `exclude` still vetoes a pulled-in dependency). Conflict detection lands alongside:
+      `eeik.pack_conflicts()` (SDK) + a `pack-conflicts` **`eeik doctor`** check read an optional
+      `conflicts:` list and surface incompatible resolved pairs (no shipped pack declares one, so the
+      gate is clean today). `expand_dependencies` / `detect_conflicts` in `eeik/packs.py`, tested in
+      `tests/test_composable_packs.py`. _Remaining (deferred): version-constrained dependencies and a
+      declared `conflicts:` in real packs once a genuine incompatibility exists._
 - [x] **Opt-in telemetry** — done, **strictly opt-in + local-first + non-identifying** (the privacy bar
       the item required). `eeik/telemetry.py` keeps aggregate pack/generator counters in
       `~/.eeik/telemetry.json` **only after** `eeik telemetry --enable` (or `EEIK_TELEMETRY=1`); there is
