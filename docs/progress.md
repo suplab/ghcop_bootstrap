@@ -68,6 +68,7 @@ Last updated: 2026-07-25 (v1.4 — Governed Generation Engine, Tier 1).
 | **`eeik doctor` (adoption/health diagnostic)** | ✅ | Diagnoses Python/deps, HALO+MCP availability, manifest validity, pack resolution, adapter materialisation, lock drift, conformance — each with an actionable fix; never throws. CLI (`--json`/`--strict`/`--exit-code`) + `eeik.doctor()` SDK + `eeik_doctor` MCP (`eeik/doctor.py`) |
 | **Shipped-content smoke test + schema completeness** | ✅ | `tests/test_shipped_content.py` guards the real packs/examples; surfaced + fixed a validator crash on malformed input, a stale example, and schema↔resolver gaps (`technology.mainframe`, `anti-corruption-layer`, `solvency-ii`/`basel-iii`). `--json` on status/validate/diff. Engine tests run on **Python 3.11/3.12/3.13** with a **coverage floor (≥50%)** |
 | **`eeik lint` (content-quality gate)** | ✅ | Lints agent/standard content well-formedness (frontmatter, name-matches-file, description quality, model/tools, structure); pass/warn/fail; CLI + `eeik.lint()` + `eeik_lint` MCP; replaces the inline frontmatter grep in CI (`eeik/lint.py`) |
+| **Composable packs (first cut)** | ✅ | `resolve_packs` now consumes the per-pack `dependencies.yaml` model (previously shipped-but-ignored): transitively pulls a selected pack's declared dependencies (existing-only, cycle-safe — e.g. `agent-harness` → `governance`) in trigger mode; explicit mode stays exact and `exclude` still vetoes. Conflict detection: `eeik.pack_conflicts()` SDK + a `pack-conflicts` `eeik doctor` check surface incompatible resolved pairs (`expand_dependencies`/`detect_conflicts` in `eeik/packs.py`; `tests/test_composable_packs.py`, 9 cases). Version-constrained deps deferred |
 
 ---
 
@@ -89,10 +90,12 @@ low risk, high impact):
 | CI polish | ~~Dependabot (pip + github-actions)~~ ✅; ~~pre-commit (ruff/mypy + local eeik lint/verify)~~ ✅; ~~catalog/verify diagnostics uploaded as CI artifacts on failure~~ ✅ | ✅ Done _(repo-admin follow-up: mark `verify --strict` + `diff` as required checks)_ |
 | Content | ~~Adapter parity matrix~~ ✅; ~~domain-pack criteria~~ ✅ (CONTRIBUTING); ~~staged→committed lessons promotion workflow~~ ✅ (reference-architecture expansion ongoing) | 🟡 In progress |
 | Governance | ~~Preview/dry-run generation~~ ✅; ~~HALO-absent "works offline" table~~ ✅; ~~MCP production notes~~ ✅ (see [engine-reference.md](reference/engine-reference.md)) | ✅ Done |
-| Strategic | Composable packs; signed packs / private registry; opt-in telemetry (license: AGPL-3.0 retained by decision) | ⬜ Planned (decisions) |
+| Strategic | ~~Composable packs (first cut — dependency expansion + conflict detection)~~ ✅; signed packs / private registry; opt-in telemetry ✅ (license: AGPL-3.0 retained by decision) | 🟡 In progress |
 
-> **Composable packs** needs a *design decision*, not just implementation (a dependency model beyond
-> today's flat `dependencies:`). The license question is settled — AGPL-3.0 is retained.
+> **Composable packs** first cut is shipped — the resolver now honours each pack's `dependencies.yaml`
+> and surfaces declared conflicts. Remaining (deferred): version-constrained dependencies and real
+> `conflicts:` declarations once a genuine incompatibility exists. The license question is settled —
+> AGPL-3.0 is retained.
 
 ---
 

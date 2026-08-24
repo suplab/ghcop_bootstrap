@@ -198,6 +198,25 @@ def check_pack_resolution() -> Diagnostic:
                       f"manifest resolves to {len(resolved)} pack(s), all present")
 
 
+def check_pack_conflicts() -> Diagnostic:
+    from eeik import api  # noqa: PLC0415
+
+    if not MANIFEST.exists():
+        return Diagnostic("pack-conflicts", "skip", "no manifest to resolve packs from")
+    try:
+        conflicts = api.pack_conflicts(path=str(MANIFEST))
+    except Exception as exc:  # noqa: BLE001
+        return Diagnostic("pack-conflicts", "skip", f"could not evaluate pack conflicts: {exc}")
+    if conflicts:
+        pairs = ", ".join(f"{a}↔{b}" for a, b in conflicts)
+        return Diagnostic(
+            "pack-conflicts", "fail",
+            f"resolved packs declare mutual conflicts: {pairs}",
+            fix="Exclude one side of each conflicting pair via capability_packs.exclude in the manifest.",
+        )
+    return Diagnostic("pack-conflicts", "pass", "resolved packs declare no conflicts")
+
+
 def check_adapters() -> Diagnostic:
     agents_dir = CLAUDE_DIR / "agents"
     if agents_dir.exists() and any(agents_dir.glob("*.md")):
@@ -261,6 +280,7 @@ _CHECKS = (
     check_mcp,
     check_manifest,
     check_pack_resolution,
+    check_pack_conflicts,
     check_adapters,
     check_lockfile,
     check_conformance,

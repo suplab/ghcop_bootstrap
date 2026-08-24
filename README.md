@@ -276,7 +276,8 @@ or a protocol ([ADR-007](docs/decisions/ADR-007-eeik-public-python-sdk.md)):
 import eeik
 
 result = eeik.validate_manifest(path="project-manifest.yaml")   # ValidationResult(valid, errors, warnings)
-packs  = eeik.resolve_packs(manifest=doc)                        # ["core", "architecture", "java", ...]
+packs  = eeik.resolve_packs(manifest=doc)                        # ["core", "architecture", "java", ...] (pulls in pack dependencies)
+clashes = eeik.pack_conflicts(manifest=doc)                      # [] — declared conflicts among resolved packs
 banking = eeik.find_packs(tag="banking")                         # [Pack(...), ...]
 who    = eeik.providers_of("java-architect")                     # [Provider(pack="java", kind="agent")]
 draft  = eeik.generate("agent-generator", spec="a refund agent") # GenerationOutcome — staged, auto_enforced=False

@@ -93,6 +93,73 @@ def load_matrix() -> dict:
         return yaml.safe_load(f) or {}
 
 
+def _norm_pack(name: str) -> str:
+    """Normalise a declared dependency name to a pack directory name.
+
+    ``dependencies.yaml`` declares names with the ``-pack`` suffix (e.g.
+    ``ai-engineering-pack``); the pack directories drop it (``ai-engineering``).
+    """
+    return name[:-5] if name.endswith("-pack") else name
+
+
+def _pack_relations(pack_name: str, key: str) -> list[str]:
+    """Read a relation list (``dependencies`` or ``conflicts``) for a pack from its
+    ``dependencies.yaml``. Returns normalised pack names; missing file/key → ``[]``.
+
+    Each entry may be a bare name or a ``{name, reason}`` mapping. Never raises — a
+    malformed or unreadable file yields ``[]`` (composability is best-effort).
+    """
+    dep_file = PACKS_DIR / pack_name / "dependencies.yaml"
+    if not dep_file.exists():
+        return []
+    try:
+        data = yaml.safe_load(dep_file.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    out: list[str] = []
+    for entry in data.get(key, []) or []:
+        name = entry.get("name") if isinstance(entry, dict) else entry
+        if isinstance(name, str) and name.strip():
+            out.append(_norm_pack(name.strip()))
+    return out
+
+
+def expand_dependencies(selected: set[str], existing: set[str]) -> set[str]:
+    """Transitively pull each selected pack's declared ``dependencies`` into the set.
+
+    Only dependencies that exist under ``capability-packs/`` are added (a declared
+    dependency on an absent pack is skipped, mirroring the resolver's existing
+    default-deny filter). Cycle-safe — a pack already in the set is never re-queued.
+    """
+    result = set(selected)
+    queue = list(selected)
+    while queue:
+        pack = queue.pop()
+        for dep in _pack_relations(pack, "dependencies"):
+            if dep in existing and dep not in result:
+                result.add(dep)
+                queue.append(dep)
+    return result
+
+
+def detect_conflicts(resolved: list[str]) -> list[tuple[str, str]]:
+    """Declared pack conflicts that are present together in ``resolved``.
+
+    Reads an optional ``conflicts:`` list from each pack's ``dependencies.yaml``.
+    Returns de-duplicated, sorted ``(a, b)`` pairs (``a < b``). Empty when no
+    resolved pack declares a conflict with another resolved pack.
+    """
+    resolved_set = set(resolved)
+    pairs: set[tuple[str, str]] = set()
+    for pack in resolved:
+        for other in _pack_relations(pack, "conflicts"):
+            if other in resolved_set and other != pack:
+                pairs.add(tuple(sorted((pack, other))))  # type: ignore[arg-type]
+    return sorted(pairs)
+
+
 def resolve_packs(manifest: dict, matrix: dict) -> list[str]:
     """Determine which packs to activate, in dependency order."""
     tech    = manifest.get("technology", {})
@@ -175,7 +242,8 @@ def resolve_packs(manifest: dict, matrix: dict) -> list[str]:
     selected.add("delivery")
 
     # ── Manifest overrides ────────────────────────────────────────────────────
-    if caps.get("explicit"):
+    explicit = bool(caps.get("explicit"))
+    if explicit:
         selected = set(caps.get("include", list(selected)))
     else:
         for inc in caps.get("include", []):
@@ -183,8 +251,18 @@ def resolve_packs(manifest: dict, matrix: dict) -> list[str]:
         for exc in caps.get("exclude", []):
             selected.discard(exc)
 
-    # ── Filter to packs that actually exist ───────────────────────────────────
+    # ── Composable packs: pull in declared pack dependencies ──────────────────
+    # Trigger-driven resolution honours each pack's dependencies.yaml (e.g.
+    # agent-harness → governance). Explicit mode is left exactly as listed — the
+    # caller opted out of automatic selection. Excludes still win over a pulled-in
+    # dependency, so an operator can always veto one.
     existing = {p.name for p in PACKS_DIR.iterdir() if p.is_dir()}
+    if not explicit:
+        selected = expand_dependencies(selected, existing)
+        for exc in caps.get("exclude", []):
+            selected.discard(exc)
+
+    # ── Filter to packs that actually exist ───────────────────────────────────
     missing  = selected - existing
     for m in sorted(missing):
         print(f"  {ANSI_YELLOW}⚠ Pack '{m}' resolved but not found in capability-packs/ — skipping{ANSI_RESET}")

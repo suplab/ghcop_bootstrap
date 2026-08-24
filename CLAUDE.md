@@ -36,6 +36,12 @@ engine other tools consume, *not* a product platform competing with APEX). Two t
 - **Packs are versioned dependencies.** Every pack declares a `version` in `metadata.yaml`.
   `eeik lock` pins adopted versions + content digests to `eeik.lock`; `eeik diff` reports drift;
   `eeik upgrade` re-pins. See [ADR-004](docs/decisions/ADR-004-capability-pack-versioning-and-lockfile.md).
+- **Packs are composable.** `resolve_packs` consumes each pack's `dependencies.yaml`: a selected pack
+  transitively pulls in its declared dependencies (existing-only, cycle-safe — e.g. `agent-harness` →
+  `governance`) in trigger-driven mode; explicit `capability_packs.explicit` stays exact and an
+  `exclude` still vetoes a pulled-in dependency. `eeik.pack_conflicts()` (SDK) + the `pack-conflicts`
+  `eeik doctor` check read an optional `conflicts:` list and surface incompatible resolved pairs.
+  Add resolution behaviour in `eeik/packs.py` (`expand_dependencies` / `detect_conflicts`).
 
 CLI: `eeik demo` (offline governed showcase), `eeik lock|diff|upgrade`, `eeik catalog` (queryable pack
 index), `eeik architectures` (engine-surfaced reference architectures, ADR-010), `eeik verify`
