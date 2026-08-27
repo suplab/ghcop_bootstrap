@@ -250,7 +250,7 @@ the repository-generator, an `architecture.md`, and a `runbook.md`. `eeik archit
       (SDK), `eeik_reference_architectures` (MCP); `eeik verify` asserts manifest validity + pack match.
 
 ### Delivered (cont.)
-- [x] **Per-architecture CDK stacks + seed data / local dev** — each of the 4 reference architectures now
+- [x] **Per-architecture CDK stacks + seed data / local dev** — each of the reference architectures now
       ships a deployable `cdk/` (TypeScript AWS CDK app — VPC/Aurora/MSK/ECS, pgvector, medallion
       lakehouse+Glue+Athena, Cognito+RLS as appropriate) and a `local-dev/` (`docker compose up -d` +
       seed data — Postgres/Kafka/MinIO/pgvector, with schema + demo rows). `reference.yaml` gained a
