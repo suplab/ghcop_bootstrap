@@ -198,7 +198,12 @@ def resolve_packs(manifest: dict, matrix: dict) -> list[str]:
         selected.add("aws")
     if tech.get("containerisation", {}).get("runtime", "none") != "none":
         selected.add("containers")
-    if mf_plat != "none":
+    # Modernization activates on any of the triggers the pack's metadata declares: a mainframe
+    # platform, an explicit modernization project type, or a top-level modernization.enabled flag.
+    modernization = manifest.get("modernization", {})
+    if (mf_plat != "none"
+            or project.get("project_type") == "modernization"
+            or modernization.get("enabled")):
         selected.add("modernization")
 
     # Data-engineering workloads (technology.data.*) activate the data-engineering pack.

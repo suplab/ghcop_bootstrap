@@ -32,7 +32,7 @@ eeik doctor                                 # check your setup (deps, manifest, 
 pip install -e ".[test]"                    # engine + HALO (agent-harness) + pytest
 eeik demo                                   # generate an agent on the real HALO confidence gate
 eeik catalog --tag regulated                # query the 25-pack capability catalog
-eeik architectures                          # 5 proven, deployable reference architectures
+eeik architectures                          # 7 proven, deployable reference architectures
 ```
 
 ```mermaid

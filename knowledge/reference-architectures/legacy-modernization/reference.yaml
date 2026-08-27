@@ -1,0 +1,54 @@
+name: legacy-modernization
+title: Legacy Modernization (Strangler Fig)
+summary: >
+  Incremental strangler-fig migration of a legacy core (mainframe COBOL / IBM i RPG, or a Java
+  monolith) to cloud-native Spring Boot 3 / Java 21 services on AWS. A routing facade sits in front of
+  the legacy system and, capability by capability, redirects traffic to new services behind an
+  anti-corruption layer — the legacy core keeps running until each slice is proven, then is retired.
+maturity: production          # poc | staging | production
+manifest: project-manifest.yaml
+
+stack:
+  - java-21
+  - spring-boot-3
+  - aurora-postgresql
+  - kafka
+  - ecs-fargate
+  - aws-cdk
+
+tags: [modernization, strangler-fig, anti-corruption-layer, legacy, mainframe, ddd, aws, migration]
+
+# The capability packs `eeik resolve-packs` produces for this manifest (verify checks the match).
+expected_packs: [core, architecture, aws, delivery, java, modernization]
+
+components:
+  - name: Routing Facade
+    tech: Spring Cloud Gateway (ECS Fargate)
+    responsibility: Single entry point; routes each capability to the legacy core or its new service via a per-route feature flag — the strangler seam
+  - name: Anti-Corruption Layer
+    tech: Spring Boot 3 adapter modules
+    responsibility: Translates between the legacy data model / protocols (COPYBOOK, fixed-width, SOAP) and the new services' domain model — no legacy concept leaks inward
+  - name: Extracted Domain Service
+    tech: Spring Boot 3 (ECS Fargate) + Aurora PostgreSQL
+    responsibility: A migrated bounded context (e.g. Policy, Account); owns its data, exposes REST, emits domain events
+  - name: Change-Data-Capture Bridge
+    tech: Debezium → Kafka
+    responsibility: Streams legacy-database changes so the new service's read model stays consistent during the coexistence window (dual-run)
+  - name: Legacy Core
+    tech: Mainframe COBOL / IBM i RPG (unchanged)
+    responsibility: Keeps serving not-yet-migrated capabilities; each slice is retired only once its replacement is proven in production
+  - name: Event Backbone
+    tech: Kafka (MSK)
+    responsibility: Domain events + CDC transport; decouples the new services and feeds reconciliation
+
+key_decisions:
+  - "Strangler fig over big-bang rewrite: migrate one capability at a time behind a routing facade, so the legacy core keeps running and each slice is independently reversible."
+  - "Anti-corruption layer at every seam: the legacy data model never leaks into a new service's domain — translation is explicit and owned by the ACL."
+  - "CDC dual-run during coexistence: Debezium streams legacy changes into the new read model so cutover is a flag flip, not a data migration outage."
+  - "Per-route feature flags for cutover + instant rollback: a capability can be shifted back to the legacy core if the new slice misbehaves."
+  - "Retire only on proof: the legacy path for a capability is deleted after the new service has carried production traffic through a bake period."
+
+# Deployable infrastructure + local dev (ADR-010, ROADMAP v1.3). Surfaced by the engine and verified.
+deployment:
+  cdk: cdk/                 # AWS CDK app (TypeScript) — the facade + an extracted service as deployable infra
+  local_dev: local-dev/     # docker-compose (facade + legacy stub + new service + Kafka + Postgres) to run it on a laptop

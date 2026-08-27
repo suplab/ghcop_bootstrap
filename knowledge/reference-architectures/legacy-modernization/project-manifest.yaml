@@ -1,0 +1,71 @@
+# EEIK Reference Architecture — Legacy Modernization (Strangler Fig)
+# A ready-to-adopt, schema-valid eeik manifest for incrementally migrating a legacy core
+# (mainframe COBOL / IBM i RPG or a Java monolith) to cloud-native services behind a routing
+# facade. Feed it to `eeik resolve-packs` / the repository-generator, or copy it as a starting point.
+
+schema_version: "1.0"
+
+project:
+  name: legacy-modernization
+  description: Incremental strangler-fig migration of a legacy core to cloud-native services
+  owner: modernization-programme
+  domain: generic
+  project_type: modernization
+
+technology:
+  backend:
+    language: java
+    version: 21
+    framework: spring-boot
+  frontend:
+    framework: none
+  database:
+    type: aurora-postgresql
+    migration_tool: flyway
+    orm: spring-data-jpa
+  messaging:
+    broker: kafka
+    pattern: event-driven
+
+architecture:
+  style: microservices
+  patterns:
+    - strangler-fig
+    - anti-corruption-layer
+    - ddd
+    - api-gateway
+  api_style: rest
+
+modernization:
+  enabled: true
+  source_platform: mainframe
+  strategy: strangler-fig
+
+cloud:
+  provider: aws
+  infra_as_code: cdk
+  regions:
+    - eu-west-1
+  multi_account: true
+
+ai:
+  enabled: false
+
+governance:
+  profile: standard
+  reviews_required:
+    - architecture-review
+    - security-review
+
+delivery:
+  model: multi-team
+  methodology: agile
+  sprint_length_weeks: 2
+  cicd_platform: github-actions
+
+observability:
+  enabled: true
+  logging: cloudwatch
+  tracing: x-ray
+  metrics: cloudwatch
+  slo_required: true

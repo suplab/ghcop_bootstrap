@@ -51,6 +51,21 @@ def test_mainframe_platform_resolves_modernization():
     assert "modernization" in packs
 
 
+def test_modernization_project_type_resolves_modernization():
+    # Aligns the resolver with the modernization pack's declared manifest_triggers.
+    packs = _resolve(project={"name": "svc", "domain": "generic", "project_type": "modernization"})
+    assert "modernization" in packs
+
+
+def test_modernization_enabled_flag_resolves_modernization():
+    packs = _resolve(modernization={"enabled": True})
+    assert "modernization" in packs
+
+
+def test_no_modernization_trigger_leaves_it_out():
+    assert "modernization" not in _resolve()
+
+
 @pytest.mark.parametrize("data", [
     {"streaming": "kafka"}, {"batch": "spark"}, {"transformation": "dbt"},
     {"warehouse": "athena"}, {"orchestration": "airflow"},
